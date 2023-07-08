@@ -37,3 +37,4 @@ configs.txt
 gps_trac
 
 /logs/*
+/bin/*

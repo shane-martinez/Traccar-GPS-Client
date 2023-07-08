@@ -81,7 +81,7 @@ int main(){
     MovingAverageFilter state_speed_filter(10);
 
     Configs& config = Configs::getInstance();
-    config.load("configs.txt");
+    config.load("../configs.txt");
 
     URL_FINAL = config["traccar_url"] + config["device_id"];
 

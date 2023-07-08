@@ -4,30 +4,33 @@
 CC = g++
 
 # Compiler flags
-CFLAGS = -std=c++17 -Wall -I.
+CFLAGS = -std=c++17 -Wall -I./src
 
 # Linker flags
 LDFLAGS = -lcurl -lpthread
 
 # Source files
-SRCS = $(wildcard *.cpp) $(wildcard GPS/*.cpp) $(wildcard GPS/TinyGPS/*.cpp)
+SRCS = $(wildcard src/*.cpp) $(wildcard src/GPS/*.cpp) $(wildcard src/GPS/TinyGPS/*.cpp)
 
 # Object files directory
 OBJDIR = .build
 OBJ_SUBDIRS = $(sort $(dir $(OBJS)))
 
 # Object files
-OBJS = $(patsubst %.cpp,$(OBJDIR)/%.o,$(SRCS))
+OBJS = $(patsubst src/%.cpp,$(OBJDIR)/%.o,$(SRCS))
 DEPS = $(patsubst %.o,%.d,$(OBJS))
 
+# Executable directory
+BINDIR = bin
+
 # Executable name
-EXEC = gps_trac
+EXEC = $(BINDIR)/gps_trac
 
 # Default target
 all: $(EXEC)
 
 # Create the object files directory
-$(shell mkdir -p $(OBJ_SUBDIRS))
+$(shell mkdir -p $(OBJ_SUBDIRS) $(BINDIR))
 
 # Include the dependency files
 -include $(DEPS)
@@ -37,10 +40,10 @@ $(EXEC): $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 # Rule for making the object files
-$(OBJDIR)/%.o: %.cpp
+$(OBJDIR)/%.o: src/%.cpp
 	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@ -MF $(@:.o=.d)
 
 # Clean target
 .PHONY: clean
 clean:
-	rm -rf $(OBJDIR) $(EXEC)
+	rm -rf $(OBJDIR) $(BINDIR)
