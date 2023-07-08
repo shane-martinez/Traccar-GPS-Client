@@ -6,17 +6,18 @@
 #include "GPS/GPS.hpp"
 #include "TimerUtils.hpp"
 #include "GPSLogger.hpp"
+#include "MovingAverageFilter.hpp"
 #include "Configs.hpp"
 
+// Main Timer Timeouts
 #define SLEEP_TIMEOUT   600  // 10 min
 #define IDLE_TIMEOUT    250  // 2.5 min 
 #define NORMAL_TIMEOUT  5
 
-const std::string SERVER_FILE = "server-params";
+// State Timer Timeouts
+#define TIMEOUT_STATE   300 // extra second on these
 
-const std::string log_dir     = "/home/patrol/Traccar_gps/Traccar-GPS-Client/logs/";
-const std::string unsent_dir  = "";
-const std::string log_file    = "log_file.csv";
+std::string URL_FINAL = "";
 
 
 enum LogStates{
@@ -26,8 +27,8 @@ enum LogStates{
 };
 
 
-bool sendData(const std::string S_URL, const GPS::GPSData& data) {
-    std::string url = S_URL
+bool sendData(const GPS::GPSData& data) {
+    std::string url = URL_FINAL
                       + "&timestamp=" + std::to_string(data.timestamp)
                       + "&lat=" + std::to_string(data.lat)
                       + "&lon=" + std::to_string(data.lng)
@@ -51,14 +52,38 @@ bool sendData(const std::string S_URL, const GPS::GPSData& data) {
     return false;
 }
 
+void attemptGPSSend(const GPS::GPSData& data)
+{
+    static std::string logfile = Configs::getInstance()["log_file"];
+
+    if(!sendData(data)){
+        GPSLogger::logData_Single(data);
+    }
+
+    GPSLogger::logData(logfile, data);
+}
+
+void attemptGPSResend(){
+    GPS::GPSData old_gps_data;
+
+    if(GPSLogger::readOldestData(old_gps_data)){
+        if(sendData(old_gps_data)){
+            GPSLogger::deleteOldestData();
+        }
+    }
+}
+
 int main(){
     LogStates state = NORMAL;
     TimerUtils::Timer main_timer(NORMAL_TIMEOUT);
+    TimerUtils::Timer state_timer(TIMEOUT_STATE);
+
+    MovingAverageFilter state_speed_filter(10);
 
     Configs& config = Configs::getInstance();
-    config.load("config.txt");
+    config.load("configs.txt");
 
-    std::string URL = config["traccar_url"] + config["device_id"];
+    URL_FINAL = config["traccar_url"] + config["device_id"];
 
     GPS gps;
     gps.connect();
@@ -69,42 +94,55 @@ int main(){
     while(run)
     {
         if(gps.getData(gps_data)){
-            //std::cout<<gps_data.timestamp<<"   "<<gps_data.lat<<"   "<<gps_data.lng<<"   "<<gps_data.alt<<"   "<<gps_data.kmh<<"   "<<gps_data.hdop<<std::endl;
-            // log and attempt to send latest data
-            switch(state)
-            {
-                case SLEEP:
-                    if(main_timer.expired())
-                    {
+
+            state_speed_filter.pushSample(gps_data.kmh);
+            if(state_speed_filter.average() > 1){
+                    state_timer.reset(TIMEOUT_STATE);
+                    state = NORMAL;
+                }
+                if(state_timer.expired()){
+                    switch(state){
+                        case SLEEP:
+                        case IDLE:
+                            state = SLEEP;
+                            break;
+                        case NORMAL:
+                            state = IDLE;
+                            break;
+                        default:
+                            state = NORMAL;
+                            break;
+                    }
+                    state_timer.reset(TIMEOUT_STATE);
+                }
+
+            if(main_timer.expired()){
+                
+                attemptGPSSend(gps_data);
+                //std::cout<<gps_data.timestamp<<"   "<<gps_data.lat<<"   "<<gps_data.lng<<"   "<<gps_data.alt<<"   kmh: "<<gps_data.kmh<<"   "<<gps_data.hdop<<std::endl;
+
+                switch(state)
+                {
+                    case SLEEP:
                         main_timer.reset(SLEEP_TIMEOUT);
-
-
-                    }
-                    break;
-                case IDLE:
-                    if(main_timer.expired())
-                    {
-                        main_timer.reset(IDLE_TIMEOUT);
-
-
-                    }
-                    break;
-                case NORMAL:
-                    if(main_timer.expired())
-                    {
-                        main_timer.reset(NORMAL_TIMEOUT);
-
-                        //GPSLogger::logData_Single(log_dir, gps_data);
-                        GPSLogger::readOldestData(gps_data);
-                        sendData(URL, gps_data);
-                    }
-                    break;
-                default:
-                    break;
+                        break;
+                    case IDLE:
+                        main_timer.reset(IDLE);
+                        break;
+                    case NORMAL:
+                        main_timer.reset(NORMAL);
+                        break;
+                    default:
+                        main_timer.reset(NORMAL);
+                        break;
+                }
             }
+
         }
 
-        // send old data that has not been sent yet
+        attemptGPSResend();
+
+       // std::cout<<"State: "<<(int)state<<std::endl;
 
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }

@@ -8,7 +8,7 @@ namespace TimerUtils{
     }
 
     bool Timer::expired(){
-        if(getUptimeSeconds() > end_time)
+        if(getUptimeSeconds() >= end_time)
         {
             return true;
         }
