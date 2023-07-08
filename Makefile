@@ -12,17 +12,22 @@ LDFLAGS = -lcurl -lpthread
 # Source files
 SRCS = $(wildcard *.cpp) $(wildcard GPS/*.cpp) $(wildcard GPS/TinyGPS/*.cpp)
 
-# Object files
-OBJS = $(SRCS:.cpp=.o)
+# Object files directory
+OBJDIR = .build
+OBJ_SUBDIRS = $(sort $(dir $(OBJS)))
 
-# Dependencies
-DEPS = $(OBJS:.o=.d)
+# Object files
+OBJS = $(patsubst %.cpp,$(OBJDIR)/%.o,$(SRCS))
+DEPS = $(patsubst %.o,%.d,$(OBJS))
 
 # Executable name
 EXEC = gps_trac
 
 # Default target
 all: $(EXEC)
+
+# Create the object files directory
+$(shell mkdir -p $(OBJ_SUBDIRS))
 
 # Include the dependency files
 -include $(DEPS)
@@ -32,10 +37,10 @@ $(EXEC): $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 # Rule for making the object files
-%.o: %.cpp
-	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
+$(OBJDIR)/%.o: %.cpp
+	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@ -MF $(@:.o=.d)
 
 # Clean target
 .PHONY: clean
 clean:
-	rm -f $(OBJS) $(EXEC) $(DEPS)
+	rm -rf $(OBJDIR) $(EXEC)
