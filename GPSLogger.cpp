@@ -8,7 +8,7 @@ GPSLogger::GPSLogger()
 {
 }
 
-void GPSLogger::logData(std::string filename, GPS::GPSData& data) {
+void GPSLogger::logData(const std::string filename, GPS::GPSData& data) {
     std::ofstream outfile;
 
     // std::ios::app is the "append" operation
@@ -28,7 +28,9 @@ void GPSLogger::logData(std::string filename, GPS::GPSData& data) {
     outfile.close();
 }
 
-void GPSLogger::logData_Single(std::string dir, GPS::GPSData data) {
+void GPSLogger::logData_Single(GPS::GPSData& data) {
+    std::string dir = Configs::getInstance()["log_directory"];
+    
     std::string filename = dir + std::to_string(data.timestamp) + ".csv";
     std::ofstream outfile(filename);
 
@@ -46,7 +48,8 @@ void GPSLogger::logData_Single(std::string dir, GPS::GPSData data) {
 // TODO
 
 // Function to read GPS data from the oldest file in a directory into a GPSData struct, then delete the file
-bool GPSLogger::readOldestData(std::string dir, GPS::GPSData& data) {
+bool GPSLogger::readOldestData(GPS::GPSData& data) {
+    std::string dir = Configs::getInstance()["log_directory"];
     // Check if directory exists
     if (!std::filesystem::exists(dir)) {
         std::cout << "Directory doesn't exist" << std::endl;

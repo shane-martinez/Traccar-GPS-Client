@@ -6,16 +6,15 @@
 #include "GPS/GPS.hpp"
 #include "TimerUtils.hpp"
 #include "GPSLogger.hpp"
+#include "Configs.hpp"
 
 #define SLEEP_TIMEOUT   600  // 10 min
 #define IDLE_TIMEOUT    250  // 2.5 min 
 #define NORMAL_TIMEOUT  5
 
-//const std::string TRACCAR_URL = "http://192.168.1.117:5055/?id=";  //"http://demo.traccar.org:5055/?id=";
-//const std::string CAR_ID      = "rd28_1997";
 const std::string SERVER_FILE = "server-params";
 
-const std::string log_dir     = "";
+const std::string log_dir     = "/home/patrol/Traccar_gps/Traccar-GPS-Client/logs/";
 const std::string unsent_dir  = "";
 const std::string log_file    = "log_file.csv";
 
@@ -26,32 +25,6 @@ enum LogStates{
     NORMAL
 };
 
-void readServerParams(std::string& traccarUrl, std::string& carId) {
-    std::ifstream file(SERVER_FILE);
-    if (file.is_open()) {
-        std::string line;
-        while (std::getline(file, line)) {
-            size_t colonPos = line.find(":");
-            if (colonPos != std::string::npos) {
-                std::string key = line.substr(0, colonPos);
-                std::string value = line.substr(colonPos + 1);
-                // Trim leading/trailing whitespace
-                key.erase(0, key.find_first_not_of(" \t"));
-                key.erase(key.find_last_not_of(" \t") + 1);
-                value.erase(0, value.find_first_not_of(" \t"));
-                value.erase(value.find_last_not_of(" \t") + 1);
-                if (key == "url") {
-                    traccarUrl = value;
-                } else if (key == "id") {
-                    carId = value;
-                }
-            }
-        }
-        file.close();
-    } else {
-        std::cerr << "Unable to open server-params file." << std::endl;
-    }
-}
 
 bool sendData(const std::string S_URL, const GPS::GPSData& data) {
     std::string url = S_URL
@@ -81,9 +54,11 @@ bool sendData(const std::string S_URL, const GPS::GPSData& data) {
 int main(){
     LogStates state = NORMAL;
     TimerUtils::Timer main_timer(NORMAL_TIMEOUT);
-    std::string tracc_url, id;
-    readServerParams(tracc_url, id);
-    const std::string URL = tracc_url + id;
+
+    Configs& config = Configs::getInstance();
+    config.load("config.txt");
+
+    std::string URL = config["traccar_url"] + config["device_id"];
 
     GPS gps;
     gps.connect();
@@ -119,6 +94,8 @@ int main(){
                     {
                         main_timer.reset(NORMAL_TIMEOUT);
 
+                        //GPSLogger::logData_Single(log_dir, gps_data);
+                        GPSLogger::readOldestData(gps_data);
                         sendData(URL, gps_data);
                     }
                     break;

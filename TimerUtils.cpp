@@ -2,13 +2,13 @@
 
 namespace TimerUtils{
 
-    long long getUptimeMillis(){
+    long long getUptimeSeconds(){
         auto uptime = std::chrono::steady_clock::now() - system_start_time;
-        return std::chrono::duration_cast<std::chrono::milliseconds>(uptime).count();
+        return std::chrono::duration_cast<std::chrono::seconds>(uptime).count();
     }
 
     bool Timer::expired(){
-        if(getUptimeMillis() > end_time)
+        if(getUptimeSeconds() > end_time)
         {
             return true;
         }
@@ -16,12 +16,12 @@ namespace TimerUtils{
     }
 
     void Timer::reset(){
-        end_time = getUptimeMillis() + duration;
+        end_time = getUptimeSeconds() + duration;
     }
 
     void Timer::reset(long long length){
         duration = length;
-        end_time = getUptimeMillis() + duration;
+        end_time = getUptimeSeconds() + duration;
     }
 
     void Timer::setExpired(){

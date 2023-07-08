@@ -4,11 +4,11 @@
 
 namespace TimerUtils {
     const auto system_start_time = std::chrono::steady_clock::now();
-    long long getUptimeMillis();
+    long long getUptimeSeconds();
 
     struct Timer{
         Timer(long long length)
-            : start_time(getUptimeMillis()),
+            : start_time(getUptimeSeconds()),
               duration(length),
               end_time(start_time + duration)
         {}

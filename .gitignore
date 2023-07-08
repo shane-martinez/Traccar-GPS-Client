@@ -31,5 +31,9 @@
 *.out
 *.app
 
-server-params
+.vscode
+
+configs.txt
 gps_trac
+
+/logs/*
